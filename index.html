@@ -466,7 +466,181 @@
                     if (!appData.decks) appData.decks = [];
                 }
             } catch (e) {
-                console.error('Data load error:', e);
+                console.warn('LocalStorage unavailable, using session storage:', e);
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            } catch (e) {
+                console.warn('Could not save to LocalStorage:', e);
+            }
+        }
+
+        function loadApiKey() {
+            try {
+                userApiKey = localStorage.getItem(API_KEY_STORAGE) || '';
+            } catch (e) {
+                console.warn('Could not load API Key:', e);
+            }
+        }
+<!-- ... existing code -->
+        // --- AI Automatic Deck Generator ---
+        async function generateAiDeckFromText() {
+            const text = document.getElementById('input-ai-text').value.trim();
+            if (!text) {
+                showToast('長文テキストを入力してください', true);
+                return;
+            }
+
+            showToast('AIが単語帳を生成中...');
+            closeAiModal();
+
+            if (!userApiKey) {
+                // APIキー未設定時のフォールバック（デモカード自動生成）
+                setTimeout(() => {
+                    const sampleCards = text.split(/[。.\n]/).filter(s => s.trim().length > 3).slice(0, 5).map((s, idx) => ({
+                        front: s.trim().substring(0, 30) + '...',
+                        back: `抽出フレーズ ${idx + 1} の解説・和訳`
+                    }));
+                    const newDeck = {
+                        id: 'deck-ai-' + Date.now(),
+                        title: '抽出テキスト単語帳',
+                        category: 'テキスト抽出',
+                        description: '入力文章から作成された単語帳',
+                        createdAt: Date.now(),
+                        cards: sampleCards.length > 0 ? sampleCards : [{ front: 'Sample Word', back: 'サンプル意味' }]
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('単語帳を作成しました（APIキーを設定すると高精度AIが有効化されます）');
+                }, 1000);
+                return;
+            }
+
+            try {
+                const prompt = `以下の文章から重要単語・用語を最大10件抽出して単語カードを作ってください。
+文章:
+${text}
+
+出力フォーマット（JSON形式のみ）:
+{
+  "title": "抽出された主要テーマ・タイトル",
+  "category": "AI自動生成",
+  "description": "文章から抽出された要点カード",
+  "cards": [
+    { "front": "単語/問題", "back": "意味/解説" }
+  ]
+}`;
+
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${userApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsed = JSON.parse(cleanJson);
+
+                if (parsed && parsed.cards) {
+                    const newDeck = {
+                        id: 'deck-ai-' + Date.now(),
+                        title: parsed.title || 'AI生成デッキ',
+                        category: parsed.category || 'AI生成',
+                        description: parsed.description || '',
+                        createdAt: Date.now(),
+                        cards: parsed.cards.map((c, idx) => ({ id: `card-ai-${Date.now()}-${idx}`, front: c.front, back: c.back }))
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('AI単語帳の生成が完了しました！');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('AI生成エラー：APIキーを確認してください', true);
+            }
+        }
+
+        async function generateRandomDeck() {
+            const levelSelect = document.getElementById('select-random-level').value;
+            const countSelect = parseInt(document.getElementById('select-random-count').value, 10) || 5;
+
+            showToast('問題を生成中...');
+            closeRandomModal();
+
+            if (!userApiKey) {
+                // APIキーが無い場合でもGitHub上で体験できるようにダミー生成
+                setTimeout(() => {
+                    const fallbackCards = Array.from({ length: countSelect }, (_, i) => ({
+                        front: `${levelSelect} - 単語 ${i + 1}`,
+                        back: `意味・解説 ${i + 1}`
+                    }));
+                    const newDeck = {
+                        id: 'deck-rnd-' + Date.now(),
+                        title: `${levelSelect} サンプル単語帳`,
+                        category: 'サンプル生成',
+                        description: `${levelSelect} レベルの標準カード`,
+                        createdAt: Date.now(),
+                        cards: fallbackCards
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('サンプル単語帳を生成しました（APIキー設定でAI生成可能）');
+                }, 800);
+                return;
+            }
+
+            try {
+                let topicPrompt = `難易度・カテゴリ: ${levelSelect}`;
+                if (levelSelect === 'chaos_riddle') {
+                    topicPrompt = `わけのわからない笑えるカオスでシュールな謎解き・なぞなぞ問題。ツッコミたくなるようなおもしろい解答のペア。`;
+                }
+
+                const prompt = `指定された設定に基づき、ランダムな単語・問題カードを ${countSelect} 件生成してください。
+${topicPrompt}
+
+出力形式（JSONのみ）:
+{
+  "title": "${levelSelect} 特選単語帳",
+  "category": "ランダム生成",
+  "description": "${levelSelect} レベルのランダムカード集",
+  "cards": [
+    { "front": "問題/単語", "back": "答え/訳" }
+  ]
+}`;
+
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${userApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsed = JSON.parse(cleanJson);
+
+                if (parsed && parsed.cards) {
+                    const newDeck = {
+                        id: 'deck-rnd-' + Date.now(),
+                        title: parsed.title || 'ランダム単語帳',
+                        category: 'ランダム生成',
+                        description: parsed.description || '',
+                        createdAt: Date.now(),
+                        cards: parsed.cards.map((c, idx) => ({ id: `card-rnd-${Date.now()}-${idx}`, front: c.front, back: c.back }))
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('ランダム問題の生成が完了しました！');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('生成エラー：APIキーを確認してください', true);
             }
         }
 
