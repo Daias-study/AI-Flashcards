@@ -1,43 +1,19 @@
 <!DOCTYPE html>
-<html lang="ja" class="dark">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Flashcards - スマート単語帳</title>
+    <title>AI Flashcards - スマート単語カード</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            800: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-    
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #0b0f19;
-            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
         }
-        /* Card Flip Animation */
         .perspective-1000 {
             perspective: 1000px;
         }
@@ -50,30 +26,28 @@
         .rotate-y-180 {
             transform: rotateY(180deg);
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
     </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-150%] opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="glass border border-slate-700 text-slate-100 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            <span id="toast-message" class="text-sm font-semibold">メッセージ</span>
+        </div>
+    </div>
 
     <!-- Header -->
-    <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md">
+    <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-30 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3 cursor-pointer group" onclick="resetToHomeView()">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform duration-200">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="closeCardList()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                     <i class="fa-solid fa-brain text-white text-lg"></i>
                 </div>
                 <div>
@@ -83,1113 +57,959 @@
             </div>
 
             <div class="flex items-center gap-2 sm:gap-3">
-                <button onclick="openApiKeyModal()" class="px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-amber-400 border border-slate-700/60 text-xs font-semibold transition-colors flex items-center gap-2">
-                    <i class="fa-solid fa-key"></i>
-                    <span>APIキー</span>
+                <button onclick="openApiKeyModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold rounded-xl transition-all border border-slate-700 flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-key text-amber-400"></i>
+                    <span class="hidden sm:inline">APIキー</span>
                 </button>
-                <button onclick="openRandomModal()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md text-xs font-bold transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-dice"></i>
+                <button onclick="openRandomModal()" class="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md shadow-orange-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-dice text-white"></i>
                     <span>ランダム生成</span>
                 </button>
-                <button onclick="openAiModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md text-xs font-bold transition-all flex items-center gap-1.5">
+                <button onclick="openAiModal()" class="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center gap-2">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>長文からAI自動生成</span>
+                    <span class="hidden md:inline">長文からAI自動生成</span>
                 </button>
-                <button onclick="openDeckModal()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
+                <button onclick="openDeckModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-600/30 flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i>
-                    <span>新規デッキ</span>
+                    <span class="hidden sm:inline">新規デッキ</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        <!-- Top Notification Banner for Toast Messages -->
-        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-        <!-- Section 1: Weakness Section (Top Banner matching Screenshot) -->
-        <div id="weakness-section" class="bg-slate-900/60 border border-rose-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-xl font-bold text-white tracking-wide">弱点克服（間違えた問題）</h2>
-                            <span id="weakness-badge-count" class="px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-extrabold">0 件</span>
+        <!-- Deck List Section -->
+        <div id="deck-list-container" class="space-y-8">
+            
+            <!-- Weakness Section -->
+            <div class="glass rounded-3xl p-6 border border-rose-500/30 shadow-xl shadow-rose-950/20 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shrink-0 text-xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
                         </div>
-                        <p class="text-slate-400 text-xs mt-1">学習モードで間違えたカードが自動的に蓄積されます。</p>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-bold text-slate-100">弱点克服（間違えた問題）</h2>
+                                <span id="weakness-badge-count" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">0 件</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">学習モードで間違えたカードが自動的に蓄積されます。</p>
+                        </div>
                     </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-                    <button onclick="clearWeaknessList()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 text-xs font-semibold transition-colors">
-                        リストを空にする
-                    </button>
-                    <button onclick="openWeaknessCardListPage()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 text-xs font-semibold transition-colors flex items-center gap-1.5">
-                        <i class="fa-solid fa-eye text-xs"></i>
-                        <span>カード確認</span>
-                    </button>
-                    <button onclick="startWeaknessStudy()" id="btn-start-weakness" class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-fire"></i>
-                        <span id="btn-weakness-text">弱点を復習 (0 枚)</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="clearWeaknessDeck()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all border border-slate-700">
+                            リストを空にする
+                        </button>
+                        <button onclick="openCardList('weakness-deck')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all border border-slate-700">
+                            カード確認
+                        </button>
+                        <button id="btn-start-weakness" onclick="promptStartWeaknessStudy()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/30 flex items-center gap-2">
+                            <i class="fa-solid fa-fire"></i>
+                            <span>弱点を復習 (<span id="weakness-card-count">0 枚</span>)</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Section 2: My Decks Section -->
-        <div id="deck-list-container" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <!-- Decks Header & Search -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-white tracking-wide">マイデッキ</h2>
-                    <p class="text-slate-400 text-xs mt-1">作成した単語帳一覧</p>
+                    <h2 class="text-2xl font-extrabold text-slate-100">マイデッキ</h2>
+                    <p class="text-sm text-slate-400">作成した単語帳一覧</p>
                 </div>
-                
-                <div class="relative w-full sm:w-80">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                    <input type="text" id="input-deck-search" oninput="renderDecks()" placeholder="デッキ名やタグで検索..." class="w-full bg-slate-900/90 border border-slate-700/70 text-slate-200 text-xs rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                <div class="relative w-full sm:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="input-deck-search" oninput="renderDecks()" placeholder="デッキ名やタグで検索..." class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>
 
             <!-- Deck Grid -->
-            <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- Dynamic Decks rendered here -->
+            <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+            <!-- Empty State -->
+            <div id="decks-empty-state" class="hidden py-16 text-center">
+                <div class="w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500 text-2xl border border-slate-700">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-300">デッキが見つかりません</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">新しいデッキを作成するか、AI自動生成を使って単語帳を追加してください。</p>
             </div>
         </div>
 
-        <!-- Section 3: Study Mode (Hidden by Default) -->
-        <div id="study-section" class="hidden space-y-6 max-w-3xl mx-auto">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-                <button onclick="closeStudyMode()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-2">
-                    <i class="fa-solid fa-arrow-left"></i>
-                    学習を終了
+        <!-- Card List Management Section -->
+        <div id="card-list-section" class="hidden space-y-6">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCardList()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-slate-700">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h2 id="card-list-title" class="text-xl font-bold text-slate-100">カード管理</h2>
+                </div>
+                <button id="btn-add-card" onclick="openCardModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-600/30 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>カードを追加</span>
+                </button>
+            </div>
+
+            <div id="card-list-items" class="space-y-3"></div>
+
+            <div id="card-list-empty" class="hidden py-12 text-center glass rounded-2xl border border-slate-800">
+                <p class="text-sm text-slate-400">カードがまだありません。「カードを追加」ボタンから作成しましょう。</p>
+            </div>
+        </div>
+
+        <!-- Study Mode Section -->
+        <div id="study-section" class="hidden max-w-2xl mx-auto space-y-6">
+            <!-- Study Header -->
+            <div class="flex items-center justify-between">
+                <button onclick="exitStudyMode()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>終了する</span>
                 </button>
                 <div class="text-center">
-                    <h3 id="study-deck-title" class="font-bold text-slate-100 text-sm sm:text-base">デッキタイトル</h3>
-                    <p id="study-progress-text" class="text-xs text-indigo-400 font-semibold mt-0.5">1 / 10 問目</p>
+                    <h3 id="study-title" class="text-sm font-bold text-slate-300">学習モード</h3>
+                    <span id="study-progress" class="text-xs font-semibold text-indigo-400">1 / 10</span>
                 </div>
-                <div class="w-20"></div>
+                <div class="w-16"></div>
             </div>
 
-            <!-- Timer Bar (If Time Limit Enabled) -->
-            <div id="timer-container" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-1.5">
-                <div class="flex justify-between items-center text-xs font-bold">
-                    <span class="text-slate-400 flex items-center gap-1.5">
-                        <i class="fa-solid fa-stopwatch text-indigo-400"></i> 残り時間
-                    </span>
-                    <span id="timer-text" class="text-indigo-400">10秒</span>
+            <!-- Timer Bar -->
+            <div id="study-timer-container" class="hidden space-y-1">
+                <div class="flex justify-between text-xs font-bold text-amber-400">
+                    <span><i class="fa-solid fa-stopwatch mr-1"></i>制限時間</span>
+                    <span id="study-timer-text">10秒</span>
                 </div>
-                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div id="timer-progress-bar" class="bg-gradient-to-r from-indigo-500 to-rose-500 h-full w-full transition-all duration-100 ease-linear"></div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                    <div id="study-timer-bar" class="bg-gradient-to-r from-amber-500 to-rose-500 h-full w-full transition-all duration-100 ease-linear"></div>
                 </div>
             </div>
 
-            <!-- Flashcard Display Container -->
-            <div class="perspective-1000 w-full min-h-[320px] sm:min-h-[380px] cursor-pointer" onclick="flipStudyCard()">
-                <div id="study-card-inner" class="relative w-full h-full min-h-[320px] sm:min-h-[380px] rounded-3xl bg-slate-900 border border-slate-700 shadow-2xl transition-transform duration-500 transform-style-3d p-6 sm:p-10 flex flex-col justify-between">
-                    
-                    <!-- Card Front -->
-                    <div id="study-card-front" class="absolute inset-0 p-8 flex flex-col justify-between backface-hidden bg-slate-900 rounded-3xl border border-slate-700">
-                        <div class="flex justify-between items-center text-slate-500 text-xs">
-                            <span class="font-semibold uppercase tracking-wider text-indigo-400">Question</span>
-                            <span class="text-slate-500"><i class="fa-solid fa-rotate"></i> クリックで裏返す</span>
-                        </div>
-                        <div class="my-auto text-center py-6">
-                            <h4 id="study-question-text" class="text-2xl sm:text-4xl font-extrabold text-white tracking-wide leading-relaxed">単語問題</h4>
-                        </div>
-                        <div class="text-center text-slate-500 text-xs">
-                            答えを考えてキーボード入力またはクリック
-                        </div>
+            <!-- Flashcard Canvas -->
+            <div class="perspective-1000 w-full h-80 cursor-pointer" onclick="flipCard()">
+                <div id="study-card-inner" class="relative w-full h-full transform-style-3d transition-transform duration-500 ease-out">
+                    <!-- Front -->
+                    <div class="absolute inset-0 w-full h-full glass rounded-3xl p-8 border border-slate-700/80 shadow-2xl backface-hidden flex flex-col justify-between items-center text-center">
+                        <span class="text-xs font-bold px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">問題（表面）</span>
+                        <div id="study-card-front" class="text-2xl sm:text-3xl font-extrabold text-slate-100 my-auto">Question</div>
+                        <span class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-rotate mr-1"></i>タップしてカードをめくる</span>
                     </div>
 
-                    <!-- Card Back -->
-                    <div id="study-card-back" class="absolute inset-0 p-8 flex flex-col justify-between backface-hidden rotate-y-180 bg-slate-900 rounded-3xl border border-indigo-500/50 shadow-indigo-500/10">
-                        <div class="flex justify-between items-center text-slate-500 text-xs">
-                            <span class="font-semibold uppercase tracking-wider text-rose-400">Answer</span>
-                            <span class="text-slate-500"><i class="fa-solid fa-rotate"></i> クリックで表に戻る</span>
-                        </div>
-                        <div class="my-auto text-center py-4 space-y-3">
-                            <h4 id="study-answer-text" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-wide">正解の日本語訳</h4>
-                            <p id="study-example-text" class="text-xs sm:text-sm text-slate-400 italic max-w-md mx-auto">例文がここに表示されます</p>
-                        </div>
-                        <div class="text-center text-slate-500 text-xs">
-                            AI判定結果を確認してください
-                        </div>
+                    <!-- Back -->
+                    <div class="absolute inset-0 w-full h-full glass rounded-3xl p-8 border border-indigo-500/40 bg-slate-900/90 shadow-2xl backface-hidden rotate-y-180 flex flex-col justify-between items-center text-center">
+                        <span class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">解答（裏面）</span>
+                        <div id="study-card-back" class="text-2xl sm:text-3xl font-extrabold text-emerald-300 my-auto">Answer</div>
+                        <span class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-rotate mr-1"></i>タップして戻る</span>
                     </div>
-
                 </div>
             </div>
 
-            <!-- Answer Input & Control Panel -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
+            <!-- User Answer Input & AI Judge -->
+            <div class="glass rounded-2xl p-4 border border-slate-800 space-y-3">
+                <label class="block text-xs font-bold text-slate-400">自分の解答を入力（AI自動判定・タイポ自動フォロー）</label>
                 <div class="flex gap-2">
-                    <input type="text" id="study-user-answer" placeholder="ここに答えを入力..." onkeydown="if(event.key==='Enter') submitAnswerCheck()" class="flex-1 bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button onclick="submitAnswerCheck()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-md transition-all whitespace-nowrap flex items-center gap-1.5">
-                        <i class="fa-solid fa-paper-plane"></i>
-                        <span>判定する</span>
+                    <input type="text" id="input-user-answer" placeholder="答えを入力..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="checkAnswerWithAi()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/30 whitespace-nowrap">
+                        AIで判定
                     </button>
                 </div>
 
-                <!-- AI Assessment Display Result -->
-                <div id="ai-feedback-box" class="hidden p-4 rounded-xl border text-xs leading-relaxed space-y-1">
-                    <!-- Feedback populated by JS -->
-                </div>
-
-                <!-- Actions: Skip button placed right below input -->
-                <div class="flex justify-between items-center pt-2">
-                    <button onclick="skipCurrentCard()" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-colors flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-forward text-slate-400"></i>
-                        <span>スキップ（弱点に追加して次へ）</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 4: Card Management / Deck Detail (Hidden by Default) -->
-        <div id="card-list-section" class="hidden space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-                <div class="flex items-center gap-3">
-                    <button onclick="closeCardList()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-arrow-left"></i> 戻る
-                    </button>
-                    <div>
-                        <h3 id="card-list-deck-title" class="text-xl font-bold text-white">デッキ名</h3>
-                        <p id="card-list-count" class="text-xs text-slate-400">登録済みカード: 0枚</p>
+                <div id="ai-feedback-box" class="hidden p-3 rounded-xl bg-slate-900/80 border border-slate-700 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span id="ai-result-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300">判定結果</span>
                     </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="btn-add-card-in-list" onclick="openCardModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5">
-                        <i class="fa-solid fa-plus"></i> カードを追加
-                    </button>
+                    <p id="ai-feedback-text" class="text-xs text-slate-300 mt-1"></p>
                 </div>
             </div>
 
-            <!-- Cards Table / List Grid -->
-            <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Rendered dynamically -->
-            </div>
-        </div>
-
-        <!-- Section 5: Weakness Card List Page (Hidden by Default) -->
-        <div id="weakness-list-section" class="hidden space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-                <div class="flex items-center gap-3">
-                    <button onclick="closeWeaknessCardListPage()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-arrow-left"></i> 戻る
-                    </button>
-                    <div>
-                        <h3 class="text-xl font-bold text-rose-400 flex items-center gap-2">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            弱点カード一覧
-                        </h3>
-                        <p id="weakness-list-count-text" class="text-xs text-slate-400">登録済み弱点カード: 0枚</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="clearWeaknessList()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 text-xs font-semibold transition-colors">
-                        リストを空にする
-                    </button>
-                    <button onclick="startWeaknessStudy()" id="btn-weakness-page-start" class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-fire"></i> 弱点を復習
-                    </button>
-                </div>
-            </div>
-
-            <!-- Weakness Cards Grid View -->
-            <div id="weakness-page-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- Rendered dynamically matching My Decks style -->
+            <!-- Quick Action Buttons -->
+            <div class="flex items-center justify-center gap-4 pt-2">
+                <button onclick="markCardResult(false)" class="flex-1 py-3 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-xmark"></i> 不正解
+                </button>
+                <button onclick="markCardResult(true)" class="flex-1 py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i> 正解
+                </button>
             </div>
         </div>
 
     </main>
 
-    <!-- Modal 1: API Key Setup -->
-    <div id="modal-api-key" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-key text-amber-400"></i>
-                    Gemini APIキー設定
+    <!-- Modals -->
+
+    <!-- Modal: API Key -->
+    <div id="modal-api-key" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i> APIキー設定
                 </h3>
-                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <div class="space-y-3">
-                <p class="text-xs text-slate-400 leading-relaxed">
-                    Google Gemini APIキーを入力することで、高品質なAI問題自動生成や自動採点を利用できます。（設定しない場合は簡易デモ機能が適用されます）
-                </p>
-                <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Gemini APIキーを設定すると、長文からの自動単語帳生成やAI判定機能が利用可能になります。
+            </p>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-300">Gemini API Key</label>
+                <input type="password" id="input-custom-api-key" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeApiKeyModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="saveApiKey()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md">保存する</button>
+                <button onclick="closeApiKeyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="saveApiKey()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30">保存する</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 2: Create / Edit Deck -->
-    <div id="modal-deck" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 id="modal-deck-title" class="font-bold text-lg text-white">新規デッキを作成</h3>
-                <button onclick="closeDeckModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- Modal: Deck Edit/Add -->
+    <div id="modal-deck" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 id="modal-deck-title" class="text-lg font-bold text-slate-100">新しいデッキを作成</h3>
+                <button onclick="closeDeckModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">デッキ名</label>
-                    <input type="text" id="input-deck-title" placeholder="例: 英検準1級 重要単語" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="block text-xs font-bold text-slate-300 mb-1">デッキ名</label>
+                    <input type="text" id="input-deck-title" placeholder="例: 英検準1級 単語帳" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">説明（任意）</label>
-                    <textarea id="input-deck-desc" rows="2" placeholder="デッキの概要や目標など" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">カテゴリ</label>
+                    <input type="text" id="input-deck-category" placeholder="例: 英語, 資格, 世界史" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">説明（任意）</label>
+                    <textarea id="input-deck-desc" rows="3" placeholder="目標や用途をメモ..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeDeckModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="saveDeck()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md">保存</button>
+                <button onclick="closeDeckModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="saveDeck()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30">保存する</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 3: Time Limit Option Modal -->
-    <div id="modal-timer-setup" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-stopwatch text-indigo-400"></i>
-                    学習モードの設定
-                </h3>
-                <button onclick="closeTimerModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- Modal: Card Edit/Add -->
+    <div id="modal-card" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 id="modal-card-title" class="text-lg font-bold text-slate-100">カードを追加</h3>
+                <button onclick="closeCardModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
             <div class="space-y-4">
-                <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                    <div>
-                        <span class="text-xs font-bold text-white block">時間制限（タイマー）を有効化</span>
-                        <span class="text-[10px] text-slate-400">指定した秒数で自動的に解答が表示されます</span>
-                    </div>
-                    <input type="checkbox" id="check-timer-enable" onchange="toggleTimerInput()" class="w-5 h-5 accent-indigo-600 rounded">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">問題（表面）</label>
+                    <textarea id="input-card-front" rows="3" placeholder="英単語や質問文..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
-
-                <div id="timer-sec-wrapper" class="space-y-1 opacity-50 pointer-events-none transition-all">
-                    <label class="block text-xs font-semibold text-slate-300">1問あたりの制限時間（秒）</label>
-                    <input type="number" id="input-timer-seconds" min="3" max="300" value="10" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">答え（裏面）</label>
+                    <textarea id="input-card-back" rows="3" placeholder="和訳や解答..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeTimerModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="confirmAndStartStudy()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-md">学習を開始する</button>
+                <button onclick="closeCardModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="saveCard()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30">保存する</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 4: Random Deck Generator (Levels & Eiken & Chaos) -->
-    <div id="modal-random" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-dice text-amber-400"></i>
-                    ランダム問題生成
+    <!-- Modal: Timer Settings -->
+    <div id="modal-timer-settings" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-sm w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-clock text-amber-400"></i> 学習オプション
                 </h3>
-                <button onclick="closeRandomModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="closeTimerModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
             <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">試験・難易度を選択</label>
-                    <select id="select-random-level" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <optgroup label="英検 (EIKEN)">
-                            <option value="英検5級 (初級英単語)">英検 5級 (中学初級)</option>
-                            <option value="英検4級 (中級英単語)">英検 4級 (中学中級)</option>
-                            <option value="英検3級 (中学卒業レベル)">英検 3級 (中学卒業レベル)</option>
-                            <option value="英検準2級 (高校中級レベル)">英検 準2級 (高校中級)</option>
-                            <option value="英検2級 (高校卒業レベル)" selected>英検 2級 (高校卒業レベル)</option>
-                            <option value="英検準1級 (大学中級レベル)">英検 準1級 (難関大学・社会人)</option>
-                            <option value="英検1級 (最高峰レベル)">英検 1級 (最難関・プロフェッショナル)</option>
+                <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-700/80 cursor-pointer">
+                    <input type="checkbox" id="input-enable-timer" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-800">
+                    <span class="text-xs font-bold text-slate-200">制限時間モードを有効にする</span>
+                </label>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">1問あたりの制限時間 (秒)</label>
+                    <input type="number" id="input-timer-seconds" value="10" min="3" max="300" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeTimerModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="confirmStartStudy()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30">学習スタート</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: AI Long Text Generation -->
+    <div id="modal-ai-deck" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> 長文からAI自動デッキ生成
+                </h3>
+                <button onclick="closeAiModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                英語の長文や教科書の文章、ニュースをそのまま貼り付けてください。AIが重要単語と意味を自動抽出します。
+            </p>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-300">貼り付けエリア</label>
+                <textarea id="input-ai-text" rows="6" placeholder="ここに長文テキストを貼り付けてください..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeAiModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="generateAiDeckFromText()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/30">自動作成する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Random Deck Generator -->
+    <div id="modal-random-deck" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-dice text-amber-400"></i> ランダム問題生成
+                </h3>
+                <button onclick="closeRandomModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">難易度・試験カテゴリを選択</label>
+                    <select id="select-random-level" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <optgroup label="英検レベル">
+                            <option value="英検5級">英検5級 (中学初級)</option>
+                            <option value="英検4級">英検4級 (中学中級)</option>
+                            <option value="英検3級">英検3級 (中学卒業程度)</option>
+                            <option value="英検準2級">英検準2級 (高校中級)</option>
+                            <option value="英検2級">英検2級 (高校卒業程度)</option>
+                            <option value="英検準1級">英検準1級 (大学中級程度)</option>
+                            <option value="英検1級">英検1級 (最高峰・実用英語)</option>
                         </optgroup>
-                        <optgroup label="TOEIC">
+                        <optgroup label="TOEICスコア別">
                             <option value="TOEIC 500点レベル">TOEIC 500点レベル (基礎)</option>
-                            <option value="TOEIC 700点レベル">TOEIC 700点レベル (中上級ビジネス)</option>
-                            <option value="TOEIC 900点レベル">TOEIC 900点超レベル (ハイスコア)</option>
+                            <option value="TOEIC 700点レベル">TOEIC 700点レベル (中級)</option>
+                            <option value="TOEIC 900点レベル">TOEIC 900点レベル (上級)</option>
                         </optgroup>
                         <optgroup label="その他">
-                            <option value="日常英会話頻出単語">日常英会話 必須単語</option>
-                            <option value="IT・エンジニア専門英語">IT・プログラミング専門英語</option>
-                            <option value="わけのわからない笑えるなぞなぞ (カオス級)">🌀 わけのわからない笑えるなぞなぞ (カオス級)</option>
+                            <option value="日常英会話">日常英会話頻出フレーズ</option>
+                            <option value="ビジネス英語">ビジネス英語用語</option>
+                        </optgroup>
+                        <optgroup label="🌀 隠し要素（裏メニュー）">
+                            <option value="chaos_riddle">🤪 わけのわからない笑えるなぞなぞ (カオス級)</option>
                         </optgroup>
                     </select>
                 </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">生成カード枚数</label>
-                    <select id="select-random-count" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">作成する枚数</label>
+                    <select id="select-random-count" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
                         <option value="5">5問</option>
                         <option value="10" selected>10問</option>
                         <option value="15">15問</option>
-                        <option value="20">20问</option>
+                        <option value="20">20問</option>
                     </select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeRandomModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="generateRandomDeck()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs shadow-md">生成実行</button>
+                <button onclick="closeRandomModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700">キャンセル</button>
+                <button onclick="generateRandomDeck()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/20">生成する</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 5: Long Text AI Generator -->
-    <div id="modal-ai" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
-                    長文からAI自動生成
-                </h3>
-                <button onclick="closeAiModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">デッキタイトル</label>
-                    <input type="text" id="input-ai-title" placeholder="例: ニュース記事からの単語" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">英文長文・テキスト貼り付け</label>
-                    <textarea id="input-ai-text" rows="5" placeholder="ここに英語の文章やニューステキストなどを貼り付けてください。AIが重要単語を抽出して単語カードを自動生成します。" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeAiModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="generateAiDeckFromText()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-md">AIカード生成</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal 6: Add / Edit Single Card -->
-    <div id="modal-card" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 id="modal-card-title" class="font-bold text-lg text-white">単語カードの追加</h3>
-                <button onclick="closeCardModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">問題 (表面: 英単語・質問など)</label>
-                    <input type="text" id="input-card-question" placeholder="例: resilient" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">解答 (裏面: 訳・答え)</label>
-                    <input type="text" id="input-card-answer" placeholder="例: 回復力がある、立ち直りが早い" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">例文・補足メモ (任意)</label>
-                    <input type="text" id="input-card-example" placeholder="例: She is resilient in face of difficulty." class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeCardModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">キャンセル</button>
-                <button onclick="saveCard()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
-        <div class="max-w-7xl mx-auto px-4">
-            <p>© 2026 AI Flashcards - Intelligent Learning Assistant</p>
-        </div>
-    </footer>
-
-    <!-- JavaScript App Core Engine -->
+    <!-- JavaScript Logic -->
     <script>
-        // --- Utility Functions ---
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-
-            const toast = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' : 
-                            type === 'info' ? 'bg-slate-900/90 border-indigo-500/50 text-indigo-200' : 
-                            'bg-emerald-950/90 border-emerald-500/50 text-emerald-200';
-            
-            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border ${bgColor} backdrop-blur-md shadow-2xl text-xs font-semibold transition-all duration-300 opacity-0 transform translate-y-2`;
-            
-            const iconClass = type === 'error' ? 'fa-triangle-exclamation text-rose-400' :
-                              type === 'info' ? 'fa-info-circle text-indigo-400' :
-                              'fa-circle-check text-emerald-400';
-
-            toast.innerHTML = `<i class="fa-solid ${iconClass} text-sm"></i><span>${escapeHtml(message)}</span>`;
-            
-            container.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.remove('opacity-0', 'translate-y-2');
-            });
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
-            }, 3000);
-        }
-
-        // --- State Management & Storage ---
-        let decks = [];
-        let weaknessCards = [];
+        // --- State Management ---
+        const STORAGE_KEY = 'flashcard_app_data_v2';
+        const API_KEY_STORAGE = 'flashcard_custom_api_key';
+        let userApiKey = '';
         let activeDeckId = null;
         let editingDeckId = null;
         let editingCardId = null;
+        let isWeaknessStudy = false;
         
-        // Study state
-        let currentStudyCards = [];
-        let currentCardIndex = 0;
-        let isCardFlipped = false;
-        
-        // Timer state
-        let isTimerEnabled = false;
-        let timerSecondsPerQuestion = 10;
-        let timerInterval = null;
-        let timerRemaining = 10;
+        let studyQueue = [];
+        let currentStudyIndex = 0;
+        let isFlipped = false;
 
-        // --- Load & Save Data ---
+        // Timer States
+        let isTimeLimitEnabled = false;
+        let timeLimitSeconds = 10;
+        let timerInterval = null;
+        let remainingSeconds = 0;
+        let timerPendingForWeakness = false;
+        let timerPendingDeckId = null;
+
+        let appData = {
+            decks: [],
+            weaknessCards: []
+        };
+
+        // --- Data Loading & Saving ---
         function loadData() {
             try {
-                const savedDecks = localStorage.getItem('ai_flashcards_decks');
-                if (savedDecks) {
-                    decks = JSON.parse(savedDecks);
-                } else {
-                    // Initial Sample Deck
-                    decks = [
-                        {
-                            id: 'demo-1',
-                            title: 'TOEIC 頻出重要単語セット',
-                            desc: 'TOEICスコアアップに必須となる厳選単語カード',
-                            cards: [
-                                { id: 'c1', question: 'implement', answer: '実施する、実行する', example: 'We will implement the new policy next week.' },
-                                { id: 'c2', question: 'negotiate', answer: '交渉する、取り決める', example: 'They negotiated a better contract.' },
-                                { id: 'c3', question: 'prospective', answer: '見込みのある、将来の', example: 'Meeting with prospective clients.' }
-                            ]
-                        }
-                    ];
-                    saveData();
-                }
-
-                const savedWeakness = localStorage.getItem('ai_flashcards_weakness');
-                if (savedWeakness) {
-                    weaknessCards = JSON.parse(savedWeakness);
-                }
-
-                const savedKey = localStorage.getItem('ai_flashcards_gemini_key');
-                if (savedKey) {
-                    document.getElementById('input-api-key').value = savedKey;
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    appData = JSON.parse(raw);
+                    if (!appData.weaknessCards) appData.weaknessCards = [];
+                    if (!appData.decks) appData.decks = [];
                 }
             } catch (e) {
-                console.warn('Storage read restricted', e);
+                console.error('Data load error:', e);
             }
         }
 
         function saveData() {
             try {
-                localStorage.setItem('ai_flashcards_decks', JSON.stringify(decks));
-                localStorage.setItem('ai_flashcards_weakness', JSON.stringify(weaknessCards));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
             } catch (e) {
-                console.warn('Storage write restricted', e);
+                console.error('Data save error:', e);
             }
         }
 
-        // --- Navigation Reset Function (Restores Home & Closes Everything) ---
-        function resetToHomeView() {
-            stopStudyTimer();
+        function loadApiKey() {
+            try {
+                userApiKey = localStorage.getItem(API_KEY_STORAGE) || '';
+            } catch (e) {
+                console.error('API key load error:', e);
+            }
+        }
 
-            const studySec = document.getElementById('study-section');
-            const cardListSec = document.getElementById('card-list-section');
-            const weaknessListSec = document.getElementById('weakness-list-section');
-            const deckListContainer = document.getElementById('deck-list-container');
-            const weaknessSec = document.getElementById('weakness-section');
-
-            if (studySec) studySec.classList.add('hidden');
-            if (cardListSec) cardListSec.classList.add('hidden');
-            if (weaknessListSec) weaknessListSec.classList.add('hidden');
-            if (deckListContainer) deckListContainer.classList.remove('hidden');
-            if (weaknessSec) weaknessSec.classList.remove('hidden');
-
-            closeApiKeyModal();
-            closeDeckModal();
-            closeCardModal();
-            closeTimerModal();
-            closeAiModal();
-            closeRandomModal();
-
-            activeDeckId = null;
-            editingDeckId = null;
-            editingCardId = null;
-            currentStudyCards = [];
-            currentCardIndex = 0;
-
+        // --- Initializer ---
+        window.onload = function() {
+            loadData();
+            loadApiKey();
+            if (!appData.decks || appData.decks.length === 0) {
+                seedInitialData();
+            }
             renderDecks();
             renderWeaknessDeckSection();
+        };
 
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        // --- Toast Notification ---
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+            
+            if (!toast || !icon || !msg) return;
 
-        // --- Render Functions ---
-        function renderDecks() {
-            const grid = document.getElementById('deck-grid');
-            if (!grid) return;
-
-            const searchInput = document.getElementById('input-deck-search');
-            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-            const filteredDecks = decks.filter(d => 
-                d.title.toLowerCase().includes(query) || (d.desc && d.desc.toLowerCase().includes(query))
-            );
-
-            if (filteredDecks.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-slate-900/40 border border-slate-800 rounded-3xl">
-                        <i class="fa-regular fa-folder-open text-3xl text-slate-600 mb-2"></i>
-                        <p class="text-sm text-slate-400">デッキが見つかりません</p>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = filteredDecks.map(deck => `
-                <div class="group relative bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-3xl p-6 shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[220px]">
-                    <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700/60 text-indigo-400 text-[11px] font-semibold">
-                                ${escapeHtml(deck.tag || 'ランダム生成')}
-                            </span>
-                            <div class="flex items-center gap-1.5 z-20">
-                                <button onclick="openDeckModal('${deck.id}')" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer" title="編集">
-                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
-                                </button>
-                                <button onclick="deleteDeck('${deck.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer" title="削除">
-                                    <i class="fa-solid fa-trash-can text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <h3 class="text-lg font-bold text-white group-hover:text-indigo-200 transition-colors line-clamp-1">${escapeHtml(deck.title)}</h3>
-                        <p class="text-xs text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">${escapeHtml(deck.desc || '説明なし')}</p>
-                    </div>
-
-                    <div class="flex items-center justify-between pt-6 mt-4 border-t border-slate-800/80 z-20">
-                        <span class="text-slate-400 text-xs font-semibold flex items-center gap-1.5">
-                            <i class="fa-solid fa-layer-group text-slate-500"></i>
-                            ${deck.cards ? deck.cards.length : 0} 枚
-                        </span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="openCardList('${deck.id}')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer">
-                                <i class="fa-solid fa-list text-xs"></i>
-                                <span>カード編集</span>
-                            </button>
-                            <button onclick="openTimerSetupModal('${deck.id}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
-                                <i class="fa-solid fa-play text-xs"></i>
-                                <span>学習開始</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function renderWeaknessDeckSection() {
-            const badgeCount = document.getElementById('weakness-badge-count');
-            const btnText = document.getElementById('btn-weakness-text');
-            const btn = document.getElementById('btn-start-weakness');
-
-            const count = weaknessCards.length;
-            if (badgeCount) badgeCount.innerText = `${count} 件`;
-            if (btnText) btnText.innerText = `弱点を復習 (${count} 枚)`;
-            if (btn) btn.disabled = count === 0;
-
-            const btnPageStart = document.getElementById('btn-weakness-page-start');
-            if (btnPageStart) btnPageStart.disabled = count === 0;
-
-            // Only render page list if page is currently visible
-            const weaknessListSec = document.getElementById('weakness-list-section');
-            if (weaknessListSec && !weaknessListSec.classList.contains('hidden')) {
-                renderWeaknessCardListPage();
-            }
-        }
-
-        // --- Weakness Dedicated Page Operations ---
-        function openWeaknessCardListPage() {
-            document.getElementById('deck-list-container').classList.add('hidden');
-            document.getElementById('weakness-section').classList.add('hidden');
-            document.getElementById('card-list-section').classList.add('hidden');
-            document.getElementById('study-section').classList.add('hidden');
-            document.getElementById('weakness-list-section').classList.remove('hidden');
-
-            renderWeaknessCardListPage();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function closeWeaknessCardListPage() {
-            document.getElementById('weakness-list-section').classList.add('hidden');
-            document.getElementById('deck-list-container').classList.remove('hidden');
-            document.getElementById('weakness-section').classList.remove('hidden');
-            renderWeaknessDeckSection();
-        }
-
-        function renderWeaknessCardListPage() {
-            const container = document.getElementById('weakness-page-cards-container');
-            const countText = document.getElementById('weakness-list-count-text');
-            if (!container) return;
-
-            const count = weaknessCards.length;
-            if (countText) countText.innerText = `登録済み弱点カード: ${count}枚`;
-
-            if (count === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl">
-                        <i class="fa-regular fa-face-smile text-4xl text-slate-600 mb-3"></i>
-                        <p class="text-sm font-semibold text-slate-300">弱点カードはありません</p>
-                        <p class="text-xs text-slate-500 mt-1">学習モードでスキップまたは間違えた単語がここに蓄積されます</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = weaknessCards.map((c, index) => `
-                <div class="group relative bg-slate-900/90 border border-rose-500/30 hover:border-rose-500/60 rounded-3xl p-6 shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[200px]">
-                    <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px] font-extrabold">
-                                弱点 #${index + 1}
-                            </span>
-                            <button onclick="removeSingleWeakness(${index})" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer z-20" title="このカードを削除">
-                                <i class="fa-solid fa-trash-can text-sm"></i>
-                            </button>
-                        </div>
-                        <h4 class="text-lg font-bold text-white group-hover:text-rose-200 transition-colors line-clamp-1">${escapeHtml(c.question)}</h4>
-                        <p class="text-xs font-semibold text-emerald-400 mt-1.5 line-clamp-1">${escapeHtml(c.answer)}</p>
-                        ${c.example ? `<p class="text-xs text-slate-400 italic mt-2.5 line-clamp-2 leading-relaxed">${escapeHtml(c.example)}</p>` : ''}
-                    </div>
-
-                    <div class="pt-4 mt-4 border-t border-slate-800/80 text-[11px] text-slate-500 flex justify-between items-center">
-                        <span>学習モードで復習可能</span>
-                        <i class="fa-solid fa-brain text-slate-600"></i>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function removeSingleWeakness(index) {
-            if (index >= 0 && index < weaknessCards.length) {
-                const removed = weaknessCards.splice(index, 1);
-                saveData();
-                renderWeaknessDeckSection();
-                renderWeaknessCardListPage();
-                showToast(`「${removed[0]?.question || 'カード'}」を弱点から削除しました`);
-            }
-        }
-
-        function clearWeaknessList() {
-            if (!weaknessCards || weaknessCards.length === 0) {
-                showToast('弱点リストは既に空です', 'info');
-                return;
-            }
-            if (window.confirm('弱点リストをすべて空にしてもよろしいですか？')) {
-                weaknessCards = [];
-                saveData();
-                renderWeaknessDeckSection();
-                renderWeaknessCardListPage();
-                
-                // 強制的にUIの件数表示を0件に更新
-                const badgeCount = document.getElementById('weakness-badge-count');
-                const btnText = document.getElementById('btn-weakness-text');
-                const btn = document.getElementById('btn-start-weakness');
-                const countText = document.getElementById('weakness-list-count-text');
-                
-                if (badgeCount) badgeCount.innerText = '0 件';
-                if (btnText) btnText.innerText = '弱点を復習 (0 枚)';
-                if (btn) btn.disabled = true;
-                if (countText) countText.innerText = '登録済み弱点カード: 0枚';
-                
-                const btnPageStart = document.getElementById('btn-weakness-page-start');
-                if (btnPageStart) btnPageStart.disabled = true;
-
-                showToast('弱点リストを空にしました');
-            }
-        }
-
-        // --- API Key Modal Operations ---
-        function openApiKeyModal() {
-            document.getElementById('modal-api-key').classList.remove('hidden');
-        }
-        function closeApiKeyModal() {
-            document.getElementById('modal-api-key').classList.add('hidden');
-        }
-        function saveApiKey() {
-            const val = document.getElementById('input-api-key').value.trim();
-            try {
-                localStorage.setItem('ai_flashcards_gemini_key', val);
-            } catch (e) {}
-            closeApiKeyModal();
-            showToast('APIキーを保存しました');
-        }
-
-        // --- Deck Modal & CRUD Operations ---
-        function openDeckModal(deckId = null) {
-            editingDeckId = deckId;
-            const modalTitle = document.getElementById('modal-deck-title');
-            const titleInput = document.getElementById('input-deck-title');
-            const descInput = document.getElementById('input-deck-desc');
-
-            if (deckId) {
-                const target = decks.find(d => d.id === deckId);
-                if (target) {
-                    modalTitle.innerText = 'デッキの編集';
-                    titleInput.value = target.title;
-                    descInput.value = target.desc || '';
-                }
+            msg.textContent = message;
+            if (isError) {
+                icon.className = 'fa-solid fa-circle-exclamation text-rose-400 text-lg';
             } else {
-                modalTitle.innerText = '新規デッキを作成';
-                titleInput.value = '';
-                descInput.value = '';
+                icon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
             }
-            document.getElementById('modal-deck').classList.remove('hidden');
+            
+            toast.classList.remove('translate-y-[-150%]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-150%]', 'opacity-0');
+            }, 3000);
+        }
+
+        // --- Initial Seed Data ---
+        function seedInitialData() {
+            appData.decks = [
+                {
+                    id: 'deck-demo-1',
+                    title: 'TOEIC 頻出基本英単語',
+                    category: '英語・資格',
+                    description: 'TOEICスコアアップを目指すための重要単語集',
+                    createdAt: Date.now(),
+                    cards: [
+                        { id: 'card-1', front: 'negotiate', back: '交渉する、取り決める' },
+                        { id: 'card-2', front: 'implement', back: '実行する、実施する' },
+                        { id: 'card-3', front: 'crucial', back: '極めて重要な、決定的な' }
+                    ]
+                }
+            ];
+            saveData();
+        }
+
+        // --- API Key Modal Functions ---
+        function openApiKeyModal() {
+            const modal = document.getElementById('modal-api-key');
+            if (modal) {
+                document.getElementById('input-custom-api-key').value = userApiKey;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeApiKeyModal() {
+            const modal = document.getElementById('modal-api-key');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function saveApiKey() {
+            const inputEl = document.getElementById('input-custom-api-key');
+            const keyInput = inputEl ? inputEl.value.trim() : '';
+            userApiKey = keyInput;
+            try {
+                localStorage.setItem(API_KEY_STORAGE, userApiKey);
+                showToast('APIキーを保存しました');
+            } catch (e) {
+                showToast('保存に失敗しました', true);
+            }
+            closeApiKeyModal();
+        }
+
+        // --- Deck Modal Functions ---
+        function openDeckModal() {
+            editingDeckId = null;
+            document.getElementById('modal-deck-title').textContent = '新しいデッキを作成';
+            document.getElementById('input-deck-title').value = '';
+            document.getElementById('input-deck-category').value = '';
+            document.getElementById('input-deck-desc').value = '';
+            const modal = document.getElementById('modal-deck');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function openDeckModalById(deckId) {
+            editingDeckId = deckId;
+            const deck = appData.decks.find(d => d.id === deckId);
+            if (!deck) return;
+            document.getElementById('modal-deck-title').textContent = 'デッキ情報を編集';
+            document.getElementById('input-deck-title').value = deck.title || '';
+            document.getElementById('input-deck-category').value = deck.category || '';
+            document.getElementById('input-deck-desc').value = deck.description || '';
+            const modal = document.getElementById('modal-deck');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
 
         function closeDeckModal() {
-            document.getElementById('modal-deck').classList.add('hidden');
+            const modal = document.getElementById('modal-deck');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
             editingDeckId = null;
         }
 
         function saveDeck() {
             const title = document.getElementById('input-deck-title').value.trim();
+            const category = document.getElementById('input-deck-category').value.trim();
             const desc = document.getElementById('input-deck-desc').value.trim();
 
             if (!title) {
-                showToast('デッキ名を入力してください', 'error');
+                showToast('デッキ名を入力してください', true);
                 return;
             }
 
             if (editingDeckId) {
-                const deck = decks.find(d => d.id === editingDeckId);
+                const deck = appData.decks.find(d => d.id === editingDeckId);
                 if (deck) {
                     deck.title = title;
-                    deck.desc = desc;
-                    showToast('デッキ情報を更新しました');
+                    deck.category = category || '一般';
+                    deck.description = desc;
                 }
             } else {
                 const newDeck = {
                     id: 'deck-' + Date.now(),
                     title: title,
-                    desc: desc,
-                    tag: 'カスタムデッキ',
+                    category: category || '一般',
+                    description: desc,
+                    createdAt: Date.now(),
                     cards: []
                 };
-                decks.push(newDeck);
-                showToast('新規デッキを作成しました');
+                appData.decks.unshift(newDeck);
             }
 
             saveData();
-            renderDecks();
             closeDeckModal();
+            renderDecks();
+            showToast('デッキを保存しました');
         }
 
         function deleteDeck(deckId) {
-            if (window.confirm('このデッキを削除してもよろしいですか？')) {
-                decks = decks.filter(d => d.id !== deckId);
-                saveData();
-                renderDecks();
-                showToast('デッキを削除しました');
+            appData.decks = appData.decks.filter(d => d.id !== deckId);
+            saveData();
+            renderDecks();
+            showToast('デッキを削除しました');
+        }
+
+        // --- AI & Deck Modals ---
+        function openAiModal() {
+            const modal = document.getElementById('modal-ai-deck');
+            if (modal) {
+                document.getElementById('input-ai-text').value = '';
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
             }
         }
 
-        // --- Card Management Page Operations ---
+        function closeAiModal() {
+            const modal = document.getElementById('modal-ai-deck');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function openRandomModal() {
+            const modal = document.getElementById('modal-random-deck');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeRandomModal() {
+            const modal = document.getElementById('modal-random-deck');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function clearWeaknessDeck() {
+            appData.weaknessCards = [];
+            saveData();
+            renderWeaknessDeckSection();
+            showToast('間違えた問題リストを空にしました');
+            if (activeDeckId === 'weakness-deck') {
+                closeCardList();
+            }
+        }
+
+        // --- Card List Management ---
         function openCardList(deckId) {
             activeDeckId = deckId;
-            const deck = decks.find(d => d.id === deckId);
-            if (!deck) return;
+            const container = document.getElementById('deck-list-container');
+            const listSection = document.getElementById('card-list-section');
+            const titleEl = document.getElementById('card-list-title');
 
-            document.getElementById('deck-list-container').classList.add('hidden');
-            document.getElementById('weakness-section').classList.add('hidden');
-            document.getElementById('weakness-list-section').classList.add('hidden');
-            document.getElementById('study-section').classList.add('hidden');
-            document.getElementById('card-list-section').classList.remove('hidden');
+            if (deckId === 'weakness-deck') {
+                titleEl.textContent = '間違えた問題（弱点カード一覧）';
+            } else {
+                const deck = appData.decks.find(d => d.id === deckId);
+                titleEl.textContent = deck ? `${deck.title} - カード管理` : 'カード一覧';
+            }
 
-            document.getElementById('card-list-deck-title').innerText = deck.title;
-            renderCards();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (container) container.classList.add('hidden');
+            if (listSection) listSection.classList.remove('hidden');
+            renderCardList();
         }
 
         function closeCardList() {
-            document.getElementById('card-list-section').classList.add('hidden');
-            document.getElementById('deck-list-container').classList.remove('hidden');
-            document.getElementById('weakness-section').classList.remove('hidden');
             activeDeckId = null;
-            renderDecks();
-        }
-
-        function renderCards() {
-            const container = document.getElementById('cards-container');
-            const countText = document.getElementById('card-list-count');
-            const deck = decks.find(d => d.id === activeDeckId);
-
-            if (!container || !deck) return;
-
-            const cards = deck.cards || [];
-            if (countText) countText.innerText = `登録済みカード: ${cards.length}枚`;
-
-            if (cards.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-slate-900/40 border border-slate-800 rounded-3xl">
-                        <i class="fa-regular fa-clone text-3xl text-slate-600 mb-2"></i>
-                        <p class="text-sm text-slate-400">カードがまだありません。「カードを追加」ボタンから作成しましょう</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = cards.map((c, index) => `
-                <div class="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Card #${index + 1}</span>
-                            <div class="flex items-center gap-1">
-                                <button onclick="openCardModal('${c.id}')" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer" title="編集">
-                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
-                                </button>
-                                <button onclick="deleteCard('${c.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer" title="削除">
-                                    <i class="fa-solid fa-trash-can text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <h4 class="text-base font-bold text-white mb-1">${escapeHtml(c.question)}</h4>
-                        <p class="text-xs font-semibold text-emerald-400">${escapeHtml(c.answer)}</p>
-                        ${c.example ? `<p class="text-xs text-slate-400 italic mt-2">${escapeHtml(c.example)}</p>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openCardModal(cardId = null) {
-            editingCardId = cardId;
-            const modalTitle = document.getElementById('modal-card-title');
-            const qInput = document.getElementById('input-card-question');
-            const aInput = document.getElementById('input-card-answer');
-            const eInput = document.getElementById('input-card-example');
-
-            const deck = decks.find(d => d.id === activeDeckId);
-            if (!deck) return;
-
-            if (cardId) {
-                const targetCard = deck.cards.find(c => c.id === cardId);
-                if (targetCard) {
-                    modalTitle.innerText = 'カードの編集';
-                    qInput.value = targetCard.question;
-                    aInput.value = targetCard.answer;
-                    eInput.value = targetCard.example || '';
-                }
-            } else {
-                modalTitle.innerText = '単語カードの追加';
-                qInput.value = '';
-                aInput.value = '';
-                eInput.value = '';
-            }
-
-            document.getElementById('modal-card').classList.remove('hidden');
-        }
-
-        function closeCardModal() {
-            document.getElementById('modal-card').classList.add('hidden');
-            editingCardId = null;
-        }
-
-        function saveCard() {
-            const q = document.getElementById('input-card-question').value.trim();
-            const a = document.getElementById('input-card-answer').value.trim();
-            const e = document.getElementById('input-card-example').value.trim();
-
-            if (!q || !a) {
-                showToast('問題と解答の両方を入力してください', 'error');
-                return;
-            }
-
-            const deck = decks.find(d => d.id === activeDeckId);
-            if (!deck) return;
-
-            if (!deck.cards) deck.cards = [];
-
-            if (editingCardId) {
-                const card = deck.cards.find(c => c.id === editingCardId);
-                if (card) {
-                    card.question = q;
-                    card.answer = a;
-                    card.example = e;
-                    showToast('カードを更新しました');
-                }
-            } else {
-                const newCard = {
-                    id: 'card-' + Date.now(),
-                    question: q,
-                    answer: a,
-                    example: e
-                };
-                deck.cards.push(newCard);
-                showToast('カードを追加しました');
-            }
-
-            saveData();
-            renderCards();
-            closeCardModal();
-        }
-
-        function deleteCard(cardId) {
-            const deck = decks.find(d => d.id === activeDeckId);
-            if (!deck) return;
-
-            if (window.confirm('このカードを削除してもよろしいですか？')) {
-                deck.cards = deck.cards.filter(c => c.id !== cardId);
-                saveData();
-                renderCards();
-                showToast('カードを削除しました');
-            }
-        }
-
-        // --- Timer Setup & Study Mode ---
-        function openTimerSetupModal(deckId) {
-            activeDeckId = deckId;
-            const deck = decks.find(d => d.id === deckId);
-            if (!deck || !deck.cards || deck.cards.length === 0) {
-                showToast('このデッキには学習できるカードがありません', 'error');
-                return;
-            }
-            document.getElementById('modal-timer-setup').classList.remove('hidden');
-        }
-
-        function closeTimerModal() {
-            document.getElementById('modal-timer-setup').classList.add('hidden');
-        }
-
-        function toggleTimerInput() {
-            const check = document.getElementById('check-timer-enable');
-            const wrapper = document.getElementById('timer-sec-wrapper');
-            if (check.checked) {
-                wrapper.classList.remove('opacity-50', 'pointer-events-none');
-            } else {
-                wrapper.classList.add('opacity-50', 'pointer-events-none');
-            }
-        }
-
-        function confirmAndStartStudy() {
-            const check = document.getElementById('check-timer-enable');
-            const secInput = document.getElementById('input-timer-seconds');
-            isTimerEnabled = check.checked;
-            timerSecondsPerQuestion = parseInt(secInput.value) || 10;
-
-            closeTimerModal();
-
-            const deck = decks.find(d => d.id === activeDeckId);
-            if (deck) {
-                startStudy(deck.title, [...deck.cards]);
-            }
-        }
-
-        function startWeaknessStudy() {
-            if (!weaknessCards || weaknessCards.length === 0) {
-                showToast('復習する弱点カードがありません', 'info');
-                return;
-            }
-            isTimerEnabled = false;
-            startStudy('弱点克服トレーニング', [...weaknessCards]);
-        }
-
-        function startStudy(title, cardList) {
-            currentStudyCards = cardList;
-            currentCardIndex = 0;
-
-            document.getElementById('deck-list-container').classList.add('hidden');
-            document.getElementById('weakness-section').classList.add('hidden');
-            document.getElementById('weakness-list-section').classList.add('hidden');
-            document.getElementById('card-list-section').classList.add('hidden');
-            document.getElementById('study-section').classList.remove('hidden');
-
-            document.getElementById('study-deck-title').innerText = title;
-
-            displayCurrentCard();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function closeStudyMode() {
-            stopStudyTimer();
-            document.getElementById('study-section').classList.add('hidden');
-            document.getElementById('deck-list-container').classList.remove('hidden');
-            document.getElementById('weakness-section').classList.remove('hidden');
+            const container = document.getElementById('deck-list-container');
+            const listSection = document.getElementById('card-list-section');
+            if (listSection) listSection.classList.add('hidden');
+            if (container) container.classList.remove('hidden');
             renderDecks();
             renderWeaknessDeckSection();
         }
 
-        function displayCurrentCard() {
-            stopStudyTimer();
-            isCardFlipped = false;
-            const inner = document.getElementById('study-card-inner');
-            if (inner) inner.classList.remove('rotate-y-180');
+        function renderCardList() {
+            const listEl = document.getElementById('card-list-items');
+            const emptyEl = document.getElementById('card-list-empty');
+            const addBtn = document.getElementById('btn-add-card');
+            if (!listEl) return;
+            listEl.innerHTML = '';
 
-            const feedbackBox = document.getElementById('ai-feedback-box');
-            if (feedbackBox) feedbackBox.classList.add('hidden');
-
-            const inputAns = document.getElementById('study-user-answer');
-            if (inputAns) inputAns.value = '';
-
-            const current = currentStudyCards[currentCardIndex];
-            if (!current) return;
-
-            document.getElementById('study-progress-text').innerText = `${currentCardIndex + 1} / ${currentStudyCards.length} 問目`;
-            document.getElementById('study-question-text').innerText = current.question;
-            document.getElementById('study-answer-text').innerText = current.answer;
-            document.getElementById('study-example-text').innerText = current.example || '';
-
-            const timerContainer = document.getElementById('timer-container');
-            if (isTimerEnabled) {
-                timerContainer.classList.remove('hidden');
-                startStudyTimer();
+            let cards = [];
+            if (activeDeckId === 'weakness-deck') {
+                cards = appData.weaknessCards || [];
+                if (addBtn) addBtn.classList.add('hidden');
             } else {
-                timerContainer.classList.add('hidden');
+                const deck = appData.decks.find(d => d.id === activeDeckId);
+                cards = deck ? deck.cards || [] : [];
+                if (addBtn) addBtn.classList.remove('hidden');
             }
-        }
 
-        function flipStudyCard() {
-            isCardFlipped = !isCardFlipped;
-            const inner = document.getElementById('study-card-inner');
-            if (isCardFlipped) {
-                inner.classList.add('rotate-y-180');
-            } else {
-                inner.classList.remove('rotate-y-180');
-            }
-        }
-
-        function startStudyTimer() {
-            timerRemaining = timerSecondsPerQuestion;
-            updateTimerDisplay();
-
-            timerInterval = setInterval(() => {
-                timerRemaining -= 0.1;
-                if (timerRemaining <= 0) {
-                    stopStudyTimer();
-                    timerRemaining = 0;
-                    updateTimerDisplay();
-                    flipStudyCard();
-                    showToast('時間切れ！解答を表示します', 'info');
+            if (emptyEl) {
+                if (cards.length === 0) {
+                    emptyEl.classList.remove('hidden');
                 } else {
-                    updateTimerDisplay();
+                    emptyEl.classList.add('hidden');
                 }
-            }, 100);
+            }
+
+            cards.forEach((card, index) => {
+                const item = document.createElement('div');
+                item.className = 'glass rounded-xl p-4 flex items-center justify-between gap-4 border border-slate-700/60';
+                item.innerHTML = `
+                    <div class="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div class="text-sm font-semibold text-slate-200 truncate"><span class="text-indigo-400 text-xs mr-2">Q${index + 1}.</span>${escapeHtml(card.front)}</div>
+                        <div class="text-sm text-slate-400 truncate border-t md:border-t-0 md:border-l border-slate-700/50 pt-2 md:pt-0 md:pl-4"><span class="text-emerald-400 text-xs mr-2">A.</span>${escapeHtml(card.back)}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${activeDeckId !== 'weakness-deck' ? `
+                            <button onclick="openCardModal('${card.id}')" class="p-2 text-slate-400 hover:text-indigo-400 transition-colors">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="deleteCard('${card.id}')" class="p-2 text-slate-400 hover:text-rose-400 transition-colors">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function renderWeaknessDeckSection() {
+            const countEl = document.getElementById('weakness-card-count');
+            const badgeEl = document.getElementById('weakness-badge-count');
+            const startBtn = document.getElementById('btn-start-weakness');
+            const count = (appData.weaknessCards || []).length;
+
+            if (countEl) countEl.textContent = `${count} 枚`;
+            if (badgeEl) badgeEl.textContent = `${count} 件`;
+
+            if (startBtn) {
+                if (count === 0) {
+                    startBtn.disabled = true;
+                    startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    startBtn.disabled = false;
+                    startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        // --- Render Decks ---
+        function renderDecks() {
+            const searchInput = document.getElementById('input-deck-search');
+            const query = (searchInput ? searchInput.value : '').toLowerCase();
+            const grid = document.getElementById('deck-grid');
+            const emptyState = document.getElementById('decks-empty-state');
+            
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            const filtered = (appData.decks || []).filter(d => 
+                (d.title && d.title.toLowerCase().includes(query)) || 
+                (d.category && d.category.toLowerCase().includes(query)) ||
+                (d.description && d.description.toLowerCase().includes(query))
+            );
+
+            if (emptyState) {
+                if (filtered.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                }
+            }
+
+            filtered.forEach(deck => {
+                const cardCount = deck.cards ? deck.cards.length : 0;
+                const card = document.createElement('div');
+                card.className = 'glass rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 flex flex-col justify-between border border-slate-700/60 relative overflow-hidden group';
+                
+                card.innerHTML = `
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                ${escapeHtml(deck.category || '一般')}
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openDeckModalById('${deck.id}')" class="p-2 text-slate-400 hover:text-indigo-400 transition-colors z-20 cursor-pointer" title="デッキ情報を編集">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteDeck('${deck.id}')" class="p-2 text-slate-400 hover:text-rose-400 transition-colors z-20 cursor-pointer" title="デッキを削除">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-100 mb-2 group-hover:text-indigo-300 transition-colors line-clamp-1">${escapeHtml(deck.title)}</h3>
+                        <p class="text-slate-400 text-sm mb-4 line-clamp-2 min-h-[40px]">${escapeHtml(deck.description || '説明なし')}</p>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-700/50 flex items-center justify-between mt-2 relative z-10">
+                        <span class="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-layer-group text-indigo-400"></i> ${cardCount} 枚
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openCardList('${deck.id}')" class="px-3 py-1.5 bg-slate-700/60 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all border border-slate-600/40">
+                                <i class="fa-solid fa-list-check mr-1"></i>カード編集
+                            </button>
+                            <button onclick="promptStartStudy('${deck.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1">
+                                <i class="fa-solid fa-play"></i>学習開始
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openCardModal(cardId = null) {
+            editingCardId = cardId;
+            const titleEl = document.getElementById('modal-card-title');
+            const frontInput = document.getElementById('input-card-front');
+            const backInput = document.getElementById('input-card-back');
+
+            titleEl.textContent = cardId ? 'カードを編集' : '新しいカードを追加';
+            
+            if (cardId) {
+                const deck = appData.decks.find(d => d.id === activeDeckId);
+                const card = deck ? deck.cards.find(c => c.id === cardId) : null;
+                if (card) {
+                    frontInput.value = card.front;
+                    backInput.value = card.back;
+                }
+            } else {
+                frontInput.value = '';
+                backInput.value = '';
+            }
+
+            document.getElementById('modal-card').classList.remove('hidden');
+            document.getElementById('modal-card').classList.add('flex');
+        }
+
+        function closeCardModal() {
+            document.getElementById('modal-card').classList.add('hidden');
+            document.getElementById('modal-card').classList.remove('flex');
+            editingCardId = null;
+        }
+
+        function saveCard() {
+            const front = document.getElementById('input-card-front').value.trim();
+            const back = document.getElementById('input-card-back').value.trim();
+
+            if (!front || !back) {
+                showToast('問題と答えの両方を入力してください', true);
+                return;
+            }
+
+            const deck = appData.decks.find(d => d.id === activeDeckId);
+            if (!deck) return;
+
+            if (editingCardId) {
+                const card = deck.cards.find(c => c.id === editingCardId);
+                if (card) {
+                    card.front = front;
+                    card.back = back;
+                }
+            } else {
+                deck.cards.push({
+                    id: 'card-' + Date.now(),
+                    front: front,
+                    back: back
+                });
+            }
+
+            saveData();
+            closeCardModal();
+            renderCardList();
+            showToast('カードを保存しました');
+        }
+
+        function deleteCard(cardId) {
+            if (activeDeckId === 'weakness-deck') {
+                appData.weaknessCards = appData.weaknessCards.filter(c => c.id !== cardId);
+            } else {
+                const deck = appData.decks.find(d => d.id === activeDeckId);
+                if (deck) {
+                    deck.cards = deck.cards.filter(c => c.id !== cardId);
+                }
+            }
+            saveData();
+            renderCardList();
+            renderWeaknessDeckSection();
+            showToast('カードを削除しました');
+        }
+
+        // --- Timer & Study Launch Prompts ---
+        function promptStartStudy(deckId) {
+            timerPendingForWeakness = false;
+            timerPendingDeckId = deckId;
+            document.getElementById('modal-timer-settings').classList.remove('hidden');
+            document.getElementById('modal-timer-settings').classList.add('flex');
+        }
+
+        function promptStartWeaknessStudy() {
+            if (!appData.weaknessCards || appData.weaknessCards.length === 0) return;
+            timerPendingForWeakness = true;
+            timerPendingDeckId = null;
+            document.getElementById('modal-timer-settings').classList.remove('hidden');
+            document.getElementById('modal-timer-settings').classList.add('flex');
+        }
+
+        function closeTimerModal() {
+            document.getElementById('modal-timer-settings').classList.add('hidden');
+            document.getElementById('modal-timer-settings').classList.remove('flex');
+        }
+
+        function confirmStartStudy() {
+            const enableCheck = document.getElementById('input-enable-timer').checked;
+            const secInput = parseInt(document.getElementById('input-timer-seconds').value, 10) || 10;
+            
+            isTimeLimitEnabled = enableCheck;
+            timeLimitSeconds = Math.max(3, Math.min(300, secInput));
+            closeTimerModal();
+
+            if (timerPendingForWeakness) {
+                startStudyForWeakness();
+            } else if (timerPendingDeckId) {
+                startStudyMode(timerPendingDeckId);
+            }
+        }
+
+        // --- Study Mode Logic ---
+        function startStudyMode(deckId) {
+            const deck = appData.decks.find(d => d.id === deckId);
+            if (!deck || !deck.cards || deck.cards.length === 0) {
+                showToast('カードが登録されていません', true);
+                return;
+            }
+            isWeaknessStudy = false;
+            studyQueue = [...deck.cards];
+            currentStudyIndex = 0;
+            launchStudyView(deck.title);
+        }
+
+        function startStudyForWeakness() {
+            if (!appData.weaknessCards || appData.weaknessCards.length === 0) {
+                showToast('間違えたカードはありません', true);
+                return;
+            }
+            isWeaknessStudy = true;
+            studyQueue = [...appData.weaknessCards];
+            currentStudyIndex = 0;
+            launchStudyView('間違えた問題（弱点克服）');
+        }
+
+        function launchStudyView(title) {
+            document.getElementById('deck-list-container').classList.add('hidden');
+            document.getElementById('card-list-section').classList.add('hidden');
+            document.getElementById('study-section').classList.remove('hidden');
+            document.getElementById('study-title').textContent = title;
+            renderStudyCard();
+        }
+
+        function exitStudyMode() {
+            stopStudyTimer();
+            document.getElementById('study-section').classList.add('hidden');
+            document.getElementById('deck-list-container').classList.remove('hidden');
+            renderDecks();
+            renderWeaknessDeckSection();
         }
 
         function stopStudyTimer() {
@@ -1199,170 +1019,318 @@
             }
         }
 
-        function updateTimerDisplay() {
-            const text = document.getElementById('timer-text');
-            const bar = document.getElementById('timer-progress-bar');
-            if (text) text.innerText = `${Math.max(0, timerRemaining).toFixed(1)}秒`;
-            if (bar) {
-                const percent = Math.max(0, (timerRemaining / timerSecondsPerQuestion) * 100);
-                bar.style.width = `${percent}%`;
-            }
-        }
-
-        function submitAnswerCheck() {
-            const userAns = document.getElementById('study-user-answer').value.trim();
-            const current = currentStudyCards[currentCardIndex];
-            if (!current) return;
-
+        function startStudyTimer() {
             stopStudyTimer();
+            const bar = document.getElementById('study-timer-bar');
+            const text = document.getElementById('study-timer-text');
+            const timerContainer = document.getElementById('study-timer-container');
 
-            if (!isCardFlipped) {
-                flipStudyCard();
-            }
-
-            const feedbackBox = document.getElementById('ai-feedback-box');
-            feedbackBox.classList.remove('hidden');
-
-            const isExact = userAns.toLowerCase() === current.answer.toLowerCase();
-            if (isExact) {
-                feedbackBox.className = 'p-4 rounded-xl border bg-emerald-950/60 border-emerald-500/40 text-emerald-200 text-xs leading-relaxed space-y-1';
-                feedbackBox.innerHTML = `
-                    <div class="font-bold flex items-center gap-1.5 text-emerald-400">
-                        <i class="fa-solid fa-circle-check"></i> 大正解です！
-                    </div>
-                    <p>素晴らしい！完璧な回答です。</p>
-                `;
-            } else {
-                feedbackBox.className = 'p-4 rounded-xl border bg-amber-950/60 border-amber-500/40 text-amber-200 text-xs leading-relaxed space-y-1';
-                feedbackBox.innerHTML = `
-                    <div class="font-bold flex items-center gap-1.5 text-amber-400">
-                        <i class="fa-solid fa-circle-info"></i> 正解と比較してみましょう
-                    </div>
-                    <p>あなたの回答: <span class="font-semibold text-white">${escapeHtml(userAns || '（無解答）')}</span></p>
-                    <p>登録された正解: <span class="font-semibold text-emerald-300">${escapeHtml(current.answer)}</span></p>
-                `;
-            }
-        }
-
-        function addToWeakness(card) {
-            if (!card) return;
-            const exists = weaknessCards.some(w => w.question === card.question && w.answer === card.answer);
-            if (!exists) {
-                weaknessCards.push({ ...card });
-                saveData();
-                renderWeaknessDeckSection();
-            }
-        }
-
-        function skipCurrentCard() {
-            const current = currentStudyCards[currentCardIndex];
-            if (current) {
-                addToWeakness(current);
-                showToast(`「${current.question}」を弱点に追加しました`);
-            }
-            nextCard();
-        }
-
-        function nextCard() {
-            if (currentCardIndex < currentStudyCards.length - 1) {
-                currentCardIndex++;
-                displayCurrentCard();
-            } else {
-                stopStudyTimer();
-                showToast('すべての問題が終了しました！お疲れ様でした。');
-                closeStudyMode();
-            }
-        }
-
-        // --- Random Generator Modal ---
-        function openRandomModal() {
-            document.getElementById('modal-random').classList.remove('hidden');
-        }
-        function closeRandomModal() {
-            document.getElementById('modal-random').classList.add('hidden');
-        }
-        function generateRandomDeck() {
-            const level = document.getElementById('select-random-level').value;
-            const count = parseInt(document.getElementById('select-random-count').value) || 10;
-
-            const sampleWords = [
-                { q: 'accomplish', a: '達成する、完成させる', e: 'She accomplished her goal.' },
-                { q: 'acquire', a: '獲得する、習得する', e: 'Acquire new technical skills.' },
-                { q: 'benefit', a: '利益、特典、恩恵', e: 'This project has many benefits.' },
-                { q: 'collaborate', a: '協力する、共同で作業する', e: 'Let us collaborate on this.' },
-                { q: 'determine', a: '決定する、特定する', e: 'Determine the causes of problem.' },
-                { q: 'efficient', a: '効率的な、能率的な', e: 'An efficient work environment.' },
-                { q: 'flexible', a: '柔軟な、融通が利く', e: 'Flexible working hours.' },
-                { q: 'guarantee', a: '保証する、約束する', e: 'We guarantee the product quality.' },
-                { q: 'innovative', a: '革新的な、斬新な', e: 'An innovative technology.' },
-                { q: 'justification', a: '正当化、理由', e: 'Provide a logical justification.' }
-            ];
-
-            const selectedCards = sampleWords.slice(0, count).map((w, i) => ({
-                id: 'rnd-' + Date.now() + '-' + i,
-                question: w.q,
-                answer: w.a,
-                example: w.e
-            }));
-
-            const newDeck = {
-                id: 'deck-rnd-' + Date.now(),
-                title: `${level} 特選単語帳`,
-                desc: `${level} レベルの自動生成カード集`,
-                tag: 'ランダム生成',
-                cards: selectedCards
-            };
-
-            decks.unshift(newDeck);
-            saveData();
-            renderDecks();
-            closeRandomModal();
-            showToast(`${newDeck.title} を作成しました！`);
-        }
-
-        // --- AI Long Text Generator Modal ---
-        function openAiModal() {
-            document.getElementById('modal-ai').classList.remove('hidden');
-        }
-        function closeAiModal() {
-            document.getElementById('modal-ai').classList.add('hidden');
-        }
-        function generateAiDeckFromText() {
-            const title = document.getElementById('input-ai-title').value.trim() || 'AI抽出単語帳';
-            const text = document.getElementById('input-ai-text').value.trim();
-
-            if (!text) {
-                showToast('テキストを入力してください', 'error');
+            if (!isTimeLimitEnabled) {
+                if (timerContainer) timerContainer.classList.add('hidden');
                 return;
             }
 
-            const mockCards = [
-                { id: 'ai-1', question: 'perspective', answer: '観点、見解', example: 'From my perspective...' },
-                { id: 'ai-2', question: 'significant', answer: '重要な、かなりの', example: 'A significant increase in sales.' },
-                { id: 'ai-3', question: 'sustainable', answer: '持続可能な', example: 'Sustainable development goals.' }
-            ];
+            if (timerContainer) timerContainer.classList.remove('hidden');
+            remainingSeconds = timeLimitSeconds;
 
-            const newDeck = {
-                id: 'deck-ai-' + Date.now(),
-                title: title,
-                desc: '長文からAIが抽出した重要単語帳',
-                tag: 'AI自動生成',
-                cards: mockCards
-            };
+            if (text) text.textContent = `${remainingSeconds}秒`;
+            if (bar) bar.style.width = '100%';
 
-            decks.unshift(newDeck);
-            saveData();
-            renderDecks();
-            closeAiModal();
-            showToast('AI単語帳を生成しました！');
+            const startTime = Date.now();
+            const totalMs = timeLimitSeconds * 1000;
+
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const remainingMs = Math.max(0, totalMs - elapsed);
+                remainingSeconds = Math.ceil(remainingMs / 1000);
+
+                if (text) text.textContent = `${remainingSeconds}秒`;
+                if (bar) bar.style.width = `${(remainingMs / totalMs) * 100}%`;
+
+                if (remainingMs <= 0) {
+                    stopStudyTimer();
+                    handleTimeOut();
+                }
+            }, 100);
         }
 
-        // Initialize App on DOM Load
-        window.onload = function() {
-            loadData();
-            renderDecks();
-            renderWeaknessDeckSection();
-        };
+        function handleTimeOut() {
+            if (!isFlipped) {
+                flipCard();
+                showToast('時間切れ！不正解扱いになりました', true);
+                markCardResult(false);
+            }
+        }
+
+        function renderStudyCard() {
+            stopStudyTimer();
+            isFlipped = false;
+            
+            const card = studyQueue[currentStudyIndex];
+            const frontText = document.getElementById('study-card-front');
+            const backText = document.getElementById('study-card-back');
+            const progress = document.getElementById('study-progress');
+            const innerCard = document.getElementById('study-card-inner');
+            const inputUser = document.getElementById('input-user-answer');
+            const aiFeedback = document.getElementById('ai-feedback-box');
+
+            if (frontText) frontText.textContent = card ? card.front : '';
+            if (backText) backText.textContent = card ? card.back : '';
+            if (progress) progress.textContent = `${currentStudyIndex + 1} / ${studyQueue.length}`;
+            if (inputUser) inputUser.value = '';
+            if (aiFeedback) aiFeedback.classList.add('hidden');
+
+            if (innerCard) {
+                innerCard.style.transform = 'rotateY(0deg)';
+            }
+
+            startStudyTimer();
+        }
+
+        function flipCard() {
+            stopStudyTimer();
+            isFlipped = !isFlipped;
+            const innerCard = document.getElementById('study-card-inner');
+            if (innerCard) {
+                innerCard.style.transform = isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+            }
+        }
+
+        async function checkAnswerWithAi() {
+            const card = studyQueue[currentStudyIndex];
+            const userAnswer = document.getElementById('input-user-answer').value.trim();
+            
+            if (!userAnswer) {
+                flipCard();
+                return;
+            }
+
+            stopStudyTimer();
+            const aiFeedback = document.getElementById('ai-feedback-box');
+            const feedbackText = document.getElementById('ai-feedback-text');
+            const badge = document.getElementById('ai-result-badge');
+
+            if (aiFeedback) {
+                aiFeedback.classList.remove('hidden');
+                feedbackText.textContent = 'AI判定中...';
+            }
+
+            if (!isFlipped) flipCard();
+
+            let result = false;
+            let explanation = '';
+
+            try {
+                if (userApiKey) {
+                    const prompt = `問題:「${card.front}」
+模範解答:「${card.back}」
+ユーザーの回答:「${userAnswer}」
+
+ユーザーの回答が模範解答と意味が合っているか（または表記揺れ・同意語として正解と言えるか）を判定してください。
+以下のJSONフォーマットのみで返してください:
+{"result": "exact" | "partial" | "wrong", "explanation": "判定理由の簡潔な説明"}`;
+
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${userApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await res.json();
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(cleanJson);
+                    
+                    if (parsed.result === 'exact' || parsed.result === 'partial') {
+                        result = true;
+                    }
+                    explanation = parsed.explanation || '';
+                } else {
+                    const normUser = userAnswer.toLowerCase().replace(/\s+/g, '');
+                    const normBack = card.back.toLowerCase().replace(/\s+/g, '');
+                    if (normUser === normBack || normBack.includes(normUser) || normUser.includes(normBack)) {
+                        result = true;
+                        explanation = '簡易類似判定：合致しています';
+                    } else {
+                        explanation = '簡易類似判定：不一致です';
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                result = userAnswer.toLowerCase() === card.back.toLowerCase();
+                explanation = 'フォールバック判定を適用しました';
+            }
+
+            if (badge) {
+                if (result) {
+                    badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                    badge.textContent = '正解！';
+                } else {
+                    badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+                    badge.textContent = '不正解';
+                }
+            }
+            if (feedbackText) feedbackText.textContent = explanation;
+
+            markCardResult(result);
+        }
+
+        function markCardResult(isCorrect) {
+            const card = studyQueue[currentStudyIndex];
+            if (!isCorrect) {
+                if (!appData.weaknessCards.some(w => w.id === card.id)) {
+                    appData.weaknessCards.push(card);
+                    saveData();
+                }
+            } else if (isWeaknessStudy) {
+                appData.weaknessCards = appData.weaknessCards.filter(w => w.id !== card.id);
+                saveData();
+            }
+
+            setTimeout(() => {
+                currentStudyIndex++;
+                if (currentStudyIndex >= studyQueue.length) {
+                    showToast('全てのカードの学習が完了しました！');
+                    exitStudyMode();
+                } else {
+                    renderStudyCard();
+                }
+            }, 1800);
+        }
+
+        // --- AI Automatic Deck Generator ---
+        async function generateAiDeckFromText() {
+            const text = document.getElementById('input-ai-text').value.trim();
+            if (!text) {
+                showToast('長文テキストを入力してください', true);
+                return;
+            }
+
+            if (!userApiKey) {
+                showToast('先にAPIキーを設定してください', true);
+                openApiKeyModal();
+                return;
+            }
+
+            showToast('AIが単語帳を生成中...');
+            closeAiModal();
+
+            try {
+                const prompt = `以下の文章から重要単語・用語を最大10件抽出して単語カードを作ってください。
+文章:
+${text}
+
+出力フォーマット（JSON形式のみ）:
+{
+  "title": "抽出された主要テーマ・タイトル",
+  "category": "AI自動生成",
+  "description": "文章から抽出された要点カード",
+  "cards": [
+    { "front": "単語/問題", "back": "意味/解説" }
+  ]
+}`;
+
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${userApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsed = JSON.parse(cleanJson);
+
+                if (parsed && parsed.cards) {
+                    const newDeck = {
+                        id: 'deck-ai-' + Date.now(),
+                        title: parsed.title || 'AI生成デッキ',
+                        category: parsed.category || 'AI生成',
+                        description: parsed.description || '',
+                        createdAt: Date.now(),
+                        cards: parsed.cards.map((c, idx) => ({ id: `card-ai-${Date.now()}-${idx}`, front: c.front, back: c.back }))
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('AI単語帳の生成が完了しました！');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('AI生成に失敗しました', true);
+            }
+        }
+
+        async function generateRandomDeck() {
+            const levelSelect = document.getElementById('select-random-level').value;
+            const countSelect = parseInt(document.getElementById('select-random-count').value, 10) || 5;
+
+            if (!userApiKey) {
+                showToast('先にAPIキーを設定してください', true);
+                openApiKeyModal();
+                return;
+            }
+
+            showToast('ランダム問題を生成中...');
+            closeRandomModal();
+
+            try {
+                let topicPrompt = `難易度・カテゴリ: ${levelSelect}`;
+                if (levelSelect === 'chaos_riddle') {
+                    topicPrompt = `わけのわからない笑えるカオスでシュールな謎解き・なぞなぞ問題。ツッコミたくなるようなおもしろい解答のペア。`;
+                }
+
+                const prompt = `指定された設定に基づき、ランダムな単語・問題カードを ${countSelect} 件生成してください。
+${topicPrompt}
+
+出力形式（JSONのみ）:
+{
+  "title": "${levelSelect} 特選単語帳",
+  "category": "ランダム生成",
+  "description": "${levelSelect} レベルのランダムカード集",
+  "cards": [
+    { "front": "問題/単語", "back": "答え/訳" }
+  ]
+}`;
+
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${userApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const cleanJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsed = JSON.parse(cleanJson);
+
+                if (parsed && parsed.cards) {
+                    const newDeck = {
+                        id: 'deck-rnd-' + Date.now(),
+                        title: parsed.title || 'ランダム単語帳',
+                        category: 'ランダム生成',
+                        description: parsed.description || '',
+                        createdAt: Date.now(),
+                        cards: parsed.cards.map((c, idx) => ({ id: `card-rnd-${Date.now()}-${idx}`, front: c.front, back: c.back }))
+                    };
+                    appData.decks.unshift(newDeck);
+                    saveData();
+                    renderDecks();
+                    showToast('ランダム問題の生成が完了しました！');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('生成に失敗しました', true);
+            }
+        }
+
+        // --- Helper ---
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
     </script>
 </body>
 </html>
